@@ -163,6 +163,8 @@ for name in Battery_list:
                               'CCCT':CCCT[idx],
                               'CVCT':CVCT[idx]})
     Battery[name] = df_result
+
+#Plot 
 fig, ax = plt.subplots(1, figsize=(12, 8))
 color_list = ['b', 'g', 'r', 'c']
 for name,color in zip(Battery_list, color_list):
