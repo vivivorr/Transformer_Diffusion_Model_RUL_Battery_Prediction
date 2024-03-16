@@ -164,6 +164,46 @@ for name in Battery_list:
                               'CVCT':CVCT[idx]})
     Battery[name] = df_result
 
+def convert_to_triplets(data, target_feature, max_triplets):
+    #features = ['capacity', 'SoH', 'resistance', 'CCCT', 'CVCT']
+    triplets = []
+    
+    for index, row in data.iterrows():
+        cycle = row['cycle']
+
+        for feature in data.columns.difference(['cycle', target_feature]):
+            value = row[feature]
+            mask = 1 if pd.notnull(value) else 0 # Set mask to 1 if data is present, 0 otherwise
+
+            triplets.append({
+                            'Feature': feature,
+                            'Cycle': cycle,
+                            'Value': value,
+                            'Mask': mask
+            })
+    if len(triplets) > max_triplets:
+        correlated_features = data.corr()[target_feature].sort_vakue(ascending=False).index[1:]
+        selected_features = [target_feature] + list(correlated_features)
+        triplets = [triplet for triplet in triplets if triplet['Feature'] in selected_features]
+
+        while len(triplets) < max_triplets:
+            random_index = np.random.choice(data.index)
+            cycle = data.loc[random_index, 'cycle']
+
+            avaiable_features = data.columns[data.loc[random_index].notnull().difference(['cycle',target_feature]).tolist()]
+            feature = np.random.choice(avaiable_features)
+            value = data.loc[random_index, feature]
+            mask = 1
+
+            triplets.append({
+                'Feature': feature,
+                'cycle': cycle,
+                'Value': value,
+                'Mask': mask
+            })
+    return triplets
+
+
 #Plot 
 fig, ax = plt.subplots(1, figsize=(12, 8))
 color_list = ['b', 'g', 'r', 'c']
