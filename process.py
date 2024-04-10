@@ -36,6 +36,8 @@ class BatteryDataPreprocessor:
         else:
             raise ValueError("Unsupported dataset type.")
 
+###########################################################################################################################################################################################
+################################################################ CALCE ####################################################################################################################
     def load_calce_datasets(self):
         print("Loading datasets ...")
         for name in self.battery_list:
@@ -53,15 +55,6 @@ class BatteryDataPreprocessor:
             
             self.battery_data[name] = self.aggregate_data(discharge_capacities, health_indicator, internal_resistance, CCCT, CVCT)
 
-        print("Datasets loaded successfully.")
-
-    def load_nasa_datasets(self):
-        print("Loading NASA datasets...")
-        for name in self.battery_list:
-            print(f'Load Dataset {name}.mat ...')
-            path = self.dir_path + name + '.mat'
-            data = self.loadMat(path)
-            self.battery_data[name] = self.getBatteryCapacity(data)
         print("Datasets loaded successfully.")
 
     def process_battery_data(self, df, discharge_capacities, health_indicator, internal_resistance, CCCT, CVCT):
@@ -106,27 +99,32 @@ class BatteryDataPreprocessor:
                               'CVCT':CVCT[idx]})
         df = pd.DataFrame(data)
         return df
+    def drop_outlier(self, array,count,bins):
+        index = []
+        range_ = np.arange(1,count,bins)
+        for i in range_[:-1]:
+            array_lim = array[i:i+bins]
+            sigma = np.std(array_lim)
+            mean = np.mean(array_lim)
+            th_max,th_min = mean + sigma*2, mean - sigma*2
+            idx = np.where((array_lim < th_max) & (array_lim > th_min))
+            idx = idx[0] + i
+            index.extend(list(idx))
+        return np.array(index)
     
-    def plot_capacity_degradation(self, title='Capacity degradation at ambient temperature of 24°C'):
-        fig, ax = plt.subplots(1, figsize=(12, 8))
-        color_list = ['b:', 'g--', 'r-.', 'c.']
+    
+    ###########################################################################################################################################################################################
+    ################################################################ NASA #####################################################################################################################
+    
+    def load_nasa_datasets(self):
+        print("Loading NASA datasets...")
+        for name in self.battery_list:
+            print(f'Load Dataset {name}.mat ...')
+            path = self.dir_path + name + '.mat'
+            data = self.loadMat(path)
+            self.battery_data[name] = self.getBatteryCapacity(data)
+        print("Datasets loaded successfully.")
 
-        if self.dataset_type == 'NASA':
-            # Assuming NASA dataset 'Battery' structure: {name: [cycles, capacities]}
-            for name, color in zip(self.battery_list, color_list):
-                cycles, capacities = self.battery_data[name]
-                ax.plot(cycles, capacities, color, label=name)
-        else:
-            # Assuming CALCE dataset structure or similar where data is in DataFrame
-            for name, color in zip(self.battery_list, color_list):
-                df_result = self.battery_data[name]
-                # Update this line if CALCE dataset structure is different
-                ax.plot(df_result['cycle'], df_result['capacity'], color, label=f'Battery_{name}')
-        
-        ax.set(xlabel='Discharge cycles', ylabel='Capacity (Ah)', title=title)
-        plt.legend()
-        plt.show()
-    
     # convert str to datatime 
     def convert_to_time(self, hmm):
         year, month, day, hour, minute, second = int(hmm[0]), int(hmm[1]), int(hmm[2]), int(hmm[3]), int(hmm[4]), int(hmm[5])
@@ -147,10 +145,10 @@ class BatteryDataPreprocessor:
             d1, d2 = {}, {}
             if str(col[i][0][0]) != 'impedance':
                 for j in range(len(k)):
-                    t = col[i][3][0][0][j][0];
+                    t = col[i][3][0][0][j][0]
                     l = [t[m] for m in range(len(t))]
                     d2[k[j]] = l
-            d1['type'], d1['temp'], d1['time'], d1['data'] = str(col[i][0][0]), int(col[i][1][0]), str(self.convert_to_time(col[i][2][0])), d2
+            d1['type'], d1['ambient_temperature'], d1['time'], d1['data'] = str(col[i][0][0]), int(col[i][1][0]), str(self.convert_to_time(col[i][2][0])), d2
             data.append(d1)
 
         return data
@@ -175,6 +173,53 @@ class BatteryDataPreprocessor:
             if Bat['type'] == Type:
                 data.append(Bat['data'])
         return data
+###########################################################################################################################################################################################
+############################################################ TRIPLET GENERATION ###########################################################################################################    
+    def generate_triplets(self, input_size=100, feature='Capacity'):
+        all_triplets = []
+        if self.dataset_type == 'CALCE':
+            for name in self.battery_list:
+                df_result = self.battery_data[name]
+                cycles = df_result['cycle'].to_numpy()
+                capacities = df_result['capacity'].to_numpy()
+                mask_bits = np.ones(len(cycles))
+                triplets = [(feature, cycle, capacity, mask) for cycle, capacity, mask in zip(cycles, capacities, mask_bits)]
+                if len(triplets) > input_size:
+                    selected_indices = np.random.choice(len(triplets), size=input_size, replace=False)
+                    triplets = [triplets[i] for i in selected_indices]
+                all_triplets.extend(triplets)
+        elif self.dataset_type == 'NASA':
+            for name in self.battery_list:
+                cycles, capacities = self.battery_data[name]
+                triplets = [(feature, cycle, capacity, 1) for cycle, capacity in zip(cycles, capacities)]
+                if len(triplets) > input_size:
+                    selected_indices = np.random.choice(len(triplets), size=input_size, replace=False)
+                    triplets = [triplets[i] for i in selected_indices]
+                all_triplets.extend(triplets)
+            return all_triplets
+
+
+###########################################################################################################################################################################################
+################################################################ PLOT #####################################################################################################################
+    def plot_capacity_degradation(self, title='Capacity degradation at ambient temperature of 24°C'):
+        fig, ax = plt.subplots(1, figsize=(12, 8))
+        color_list = ['b:', 'g--', 'r-.', 'c.']
+
+        if self.dataset_type == 'NASA':
+            # Assuming NASA dataset 'Battery' structure: {name: [cycles, capacities]}
+            for name, color in zip(self.battery_list, color_list):
+                cycles, capacities = self.battery_data[name]
+                ax.plot(cycles, capacities, color, label=name)
+        else:
+            # Assuming CALCE dataset structure or similar where data is in DataFrame
+            for name, color in zip(self.battery_list, color_list):
+                df_result = self.battery_data[name]
+                # Update this line if CALCE dataset structure is different
+                ax.plot(df_result['cycle'], df_result['capacity'], color, label=f'Battery_{name}')
+        
+        ax.set(xlabel='Discharge cycles', ylabel='Capacity (Ah)', title=title)
+        plt.legend()
+        plt.show()
 #TARGET = self.battery_list
 
 def drop_outlier(array,count,bins):
@@ -248,44 +293,52 @@ def setup_seed(seed):
         torch.backends.cudnn.deterministic = True
 
 
-def convert_to_triplets(data, target_feature, max_triplets):
-    #features = ['capacity', 'SoH', 'resistance', 'CCCT', 'CVCT']
-    triplets = []
+def generate_triplets_v2(data, target_feature, max_triplets):
+    triplets_data = []
+    target_data = []
+    correlation = data.corr()[target_feature].abs().sort_values(ascending=False)
+    correlation.drop(target_feature, inplace=True)  # Avoid self-correlation
     
-    for index, row in data.iterkeys():
+    for index, row in data.iterrows():
         cycle = row['cycle']
+        for feature in data.columns.difference(['cycle']):
+            if feature == target_feature:
+                target_data.append((cycle, row[target_feature] if pd.notnull(row[target_feature]) else 0, 1 if pd.notnull(row[target_feature]) else 0))
+            else:
+                value = row[feature]
+                mask = 1 if pd.notnull(value) else 0  # Set mask to 1 if data is present, 0 otherwise
+                triplets_data.append((feature, cycle, value if mask else 0, mask))
 
-        for feature in data.columns.difference(['cycle', target_feature]):
-            value = row[feature]
-            mask = 1 if pd.notnull(value) else 0 # Set mask to 1 if data is present, 0 otherwise
+    if len(triplets_data) > max_triplets:
+        max_features = max_triplets // len(data['cycle'].unique())
+        selected_features = correlation.index[:max_features].tolist()
+        triplets_data = [t for t in triplets_data if t[0] in selected_features]
 
-            triplets.append({
-                            'Feature': feature,
-                            'Cycle': cycle,
-                            'Value': value,
-                            'Mask': mask
-            })
-    if len(triplets) > max_triplets:
-        correlated_features = data.corr()[target_feature].sort_vakue(ascending=False).index[1:]
-        selected_features = [target_feature] + list(correlated_features)
-        triplets = [triplet for triplet in triplets if triplet['Feature'] in selected_features]
+    while len(triplets_data) < max_triplets:
+        random_index = np.random.choice(data.index)
+        cycle = data.loc[random_index, 'cycle']
+        available_features = data.columns[data.loc[random_index].notnull()].difference(['cycle', target_feature])
+        feature = np.random.choice(available_features)
+        value = data.loc[random_index, feature]
+        mask = 1 
+        triplets_data.append((feature, cycle, value, mask))
+    
+    dtypes_triplets = np.dtype([
+        ('Feature', 'U50'),  
+        ('Cycle', np.int_),   
+        ('Value', np.float_), 
+        ('Mask', np.int_)     
+    ])
+    dtypes_target = np.dtype([
+        ('Cycle', np.int_),   
+        ('Value', np.float_), 
+        ('Mask', np.int_)   
+    ])
+    
+    triplets_x_array = np.array(triplets_data, dtype=dtypes_triplets)
+    target_values_array = np.array(target_data, dtype=dtypes_target)
 
-        while len(triplets) < max_triplets:
-            random_index = np.random.choice(data.index)
-            cycle = data.loc[random_index, 'cycle']
-
-            avaiable_features = data.columns[data.loc[random_index].notnull().difference(['cycle',target_feature]).tolist()]
-            feature = np.random.choice(avaiable_features)
-            value = data.loc[random_index, feature]
-            mask = 1
-
-            triplets.append({
-                'Feature': feature,
-                'cycle': cycle,
-                'Value': value,
-                'Mask': mask
-            })
-    return triplets
+    return triplets_x_array, target_values_array
 
 def get_dataloader_CALCE(data_path, var_path, size, bacth_size=32):
     train_set, train_info, valid_set, valid_info, test_set, test_info = pickle.load(open(data_path), 'rb')
