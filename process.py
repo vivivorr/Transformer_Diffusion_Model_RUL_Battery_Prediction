@@ -22,7 +22,7 @@ from sklearn.metrics import mean_squared_error
 
 class BatteryDataPreprocessor:
     count = 0
-    def __init__(self, dir_path,battery_list, dataset_type='CALCE'):
+    def __init__(self, dir_path,battery_list, dataset_type):
         self.dir_path = dir_path
         self.battery_list = battery_list
         self.dataset_type = dataset_type
@@ -175,6 +175,7 @@ class BatteryDataPreprocessor:
             if Bat['type'] == Type:
                 data.append(Bat['data'])
         return data
+#TARGET = self.battery_list
 
 def drop_outlier(array,count,bins):
     index = []
@@ -246,11 +247,12 @@ def setup_seed(seed):
         torch.backends.cudnn.benchmark = False
         torch.backends.cudnn.deterministic = True
 
+
 def convert_to_triplets(data, target_feature, max_triplets):
     #features = ['capacity', 'SoH', 'resistance', 'CCCT', 'CVCT']
     triplets = []
     
-    for index, row in data.iterrows():
+    for index, row in data.iterkeys():
         cycle = row['cycle']
 
         for feature in data.columns.difference(['cycle', target_feature]):
@@ -284,4 +286,9 @@ def convert_to_triplets(data, target_feature, max_triplets):
                 'Mask': mask
             })
     return triplets
+
+def get_dataloader_CALCE(data_path, var_path, size, bacth_size=32):
+    train_set, train_info, valid_set, valid_info, test_set, test_info = pickle.load(open(data_path), 'rb')
+    var, target_var = pickle.load(open(var_path, 'rb'))
+    train_data = BatteryDataPreprocessor()
 
