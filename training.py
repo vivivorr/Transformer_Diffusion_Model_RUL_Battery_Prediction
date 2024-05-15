@@ -14,15 +14,14 @@ def train(
 ):
     optimizer = Adam(model.parameters(), lr=config['train']['lr'], weight_decay=5e-8)
     if foldername != '':
-        output_path = foldername + '/model.pth'
+        output_path = foldername + '/model.pth' #ändern?
     m = []
     for i in range(int(config['train']['epochs'] / 10)):
         m.append(i * 10)
         
     lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=m[1:], gamma=0.8)
-    # earlystopping count
     ct = 0
-    _, target_var = pickle.load(open('preprocess/data/var.pkl', 'rb'))
+    _, target_var = pickle.load(open('preprocess/data/var.pkl', 'rb')) #ändern
     size_y = 10 * len(target_var)
     best_valid_loss = np.inf
     for epoch_no in range(config['train']['epochs']):

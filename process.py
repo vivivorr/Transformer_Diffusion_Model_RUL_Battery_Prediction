@@ -176,75 +176,75 @@ class BatteryDataPreprocessor:
         return data
 ###########################################################################################################################################################################################
 ############################################################ TRIPLET GENERATION ###########################################################################################################    
-    def generate_triplets(self, input_size=100, feature='Capacity'):
-        all_triplets = []
-        if self.dataset_type == 'CALCE':
-            for name in self.battery_list:
-                df_result = self.battery_data[name]
-                cycles = df_result['cycle'].to_numpy()
-                capacities = df_result['capacity'].to_numpy()
-                mask_bits = np.ones(len(cycles))
-                triplets = [(feature, cycle, capacity, mask) for cycle, capacity, mask in zip(cycles, capacities, mask_bits)]
-                if len(triplets) > input_size:
-                    selected_indices = np.random.choice(len(triplets), size=input_size, replace=False)
-                    triplets = [triplets[i] for i in selected_indices]
-                all_triplets.extend(triplets)
-        elif self.dataset_type == 'NASA':
-            for name in self.battery_list:
-                cycles, capacities = self.battery_data[name]
-                triplets = [(feature, cycle, capacity, 1) for cycle, capacity in zip(cycles, capacities)]
-                if len(triplets) > input_size:
-                    selected_indices = np.random.choice(len(triplets), size=input_size, replace=False)
-                    triplets = [triplets[i] for i in selected_indices]
-                all_triplets.extend(triplets)
-            return all_triplets
+    # def generate_triplets(self, input_size=100, feature='Capacity'):
+    #     all_triplets = []
+    #     if self.dataset_type == 'CALCE':
+    #         for name in self.battery_list:
+    #             df_result = self.battery_data[name]
+    #             cycles = df_result['cycle'].to_numpy()
+    #             capacities = df_result['capacity'].to_numpy()
+    #             mask_bits = np.ones(len(cycles))
+    #             triplets = [(feature, cycle, capacity, mask) for cycle, capacity, mask in zip(cycles, capacities, mask_bits)]
+    #             if len(triplets) > input_size:
+    #                 selected_indices = np.random.choice(len(triplets), size=input_size, replace=False)
+    #                 triplets = [triplets[i] for i in selected_indices]
+    #             all_triplets.extend(triplets)
+    #     elif self.dataset_type == 'NASA':
+    #         for name in self.battery_list:
+    #             cycles, capacities = self.battery_data[name]
+    #             triplets = [(feature, cycle, capacity, 1) for cycle, capacity in zip(cycles, capacities)]
+    #             if len(triplets) > input_size:
+    #                 selected_indices = np.random.choice(len(triplets), size=input_size, replace=False)
+    #                 triplets = [triplets[i] for i in selected_indices]
+    #             all_triplets.extend(triplets)
+    #         return all_triplets
         
-    def generate_triplets_v2(self, data, target_feature, max_triplets):
-        triplets_data = []
-        target_data = []
-        correlation = data.corr()[target_feature].abs().sort_values(ascending=False)
-        correlation.drop(target_feature, inplace=True)  # Avoid self-correlation
+    # def generate_triplets_v2(self, data, target_feature, max_triplets):
+    #     triplets_data = []
+    #     target_data = []
+    #     correlation = data.corr()[target_feature].abs().sort_values(ascending=False)
+    #     correlation.drop(target_feature, inplace=True)  # Avoid self-correlation
         
-        for index, row in data.iterrows():
-            cycle = row['cycle']
-            for feature in data.columns.difference(['cycle']):
-                if feature == target_feature:
-                    target_data.append((cycle, row[target_feature] if pd.notnull(row[target_feature]) else 0, 1 if pd.notnull(row[target_feature]) else 0))
-                else:
-                    value = row[feature]
-                    mask = 1 if pd.notnull(value) else 0  # Set mask to 1 if data is present, 0 otherwise
-                    triplets_data.append((feature, cycle, value if mask else 0, mask))
+    #     for index, row in data.iterrows():
+    #         cycle = row['cycle']
+    #         for feature in data.columns.difference(['cycle']):
+    #             if feature == target_feature:
+    #                 target_data.append((cycle, row[target_feature] if pd.notnull(row[target_feature]) else 0, 1 if pd.notnull(row[target_feature]) else 0))
+    #             else:
+    #                 value = row[feature]
+    #                 mask = 1 if pd.notnull(value) else 0  # Set mask to 1 if data is present, 0 otherwise
+    #                 triplets_data.append((feature, cycle, value if mask else 0, mask))
 
-        if len(triplets_data) > max_triplets:
-            max_features = max_triplets // len(data['cycle'].unique())
-            selected_features = correlation.index[:max_features].tolist()
-            triplets_data = [t for t in triplets_data if t[0] in selected_features]
+    #     if len(triplets_data) > max_triplets:
+    #         max_features = max_triplets // len(data['cycle'].unique())
+    #         selected_features = correlation.index[:max_features].tolist()
+    #         triplets_data = [t for t in triplets_data if t[0] in selected_features]
 
-        while len(triplets_data) < max_triplets:
-            random_index = np.random.choice(data.index)
-            cycle = data.loc[random_index, 'cycle']
-            available_features = data.columns[data.loc[random_index].notnull()].difference(['cycle', target_feature])
-            feature = np.random.choice(available_features)
-            value = data.loc[random_index, feature]
-            mask = 1 
-            triplets_data.append((feature, cycle, value, mask))
+    #     while len(triplets_data) < max_triplets:
+    #         random_index = np.random.choice(data.index)
+    #         cycle = data.loc[random_index, 'cycle']
+    #         available_features = data.columns[data.loc[random_index].notnull()].difference(['cycle', target_feature])
+    #         feature = np.random.choice(available_features)
+    #         value = data.loc[random_index, feature]
+    #         mask = 1 
+    #         triplets_data.append((feature, cycle, value, mask))
         
-        dtypes_triplets = np.dtype([
-            ('Feature', 'U50'),  
-            ('Cycle', np.int_),   
-            ('Value', np.float_), 
-            ('Mask', np.int_)     
-        ])
-        dtypes_target = np.dtype([
-            ('Cycle', np.int_),   
-            ('Value', np.float_), 
-            ('Mask', np.int_)   
-        ])
+    #     dtypes_triplets = np.dtype([
+    #         ('Feature', 'U50'),  
+    #         ('Cycle', np.int_),   
+    #         ('Value', np.float_), 
+    #         ('Mask', np.int_)     
+    #     ])
+    #     dtypes_target = np.dtype([
+    #         ('Cycle', np.int_),   
+    #         ('Value', np.float_), 
+    #         ('Mask', np.int_)   
+    #     ])
         
-        triplets_x_array = np.array(triplets_data, dtype=dtypes_triplets)
-        target_values_array = np.array(target_data, dtype=dtypes_target)
+    #     triplets_x_array = np.array(triplets_data, dtype=dtypes_triplets)
+    #     target_values_array = np.array(target_data, dtype=dtypes_target)
 
-        return triplets_x_array, target_values_array
+    #     return triplets_x_array, target_values_array
 
 ###########################################################################################################################################################################################
 ################################################################ PLOT #####################################################################################################################
@@ -342,9 +342,8 @@ def setup_seed(seed):
 
 
 
-def get_dataloader_CALCE(data_path, var_path, size, batch_size=32):
-    train_set, train_info, valid_set, valid_info, test_set, test_info = pickle.load(open(data_path), 'rb')
-    var, target_var = pickle.load(open(var_path, 'rb'))
+def get_dataloader_CALCE(data_path, batch_size=32):
+    train_set, valid_set, test_set, = pickle.load(open(data_path), 'rb')
     train_data = BatteryDataPreprocessor(data_path, train_set, dataset_type='CALCE')
     valid_data = BatteryDataPreprocessor(data_path, valid_set, dataset_type='CALCE')
     test_data = BatteryDataPreprocessor(data_path, test_set, dataset_type='CALCE')
@@ -353,3 +352,16 @@ def get_dataloader_CALCE(data_path, var_path, size, batch_size=32):
     valid_loader = DataLoader(valid_data, batch_size=batch_size, shuffle=1)
     test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=1)
 
+    return train_loader, valid_loader, test_loader
+
+def get_dataloader_NASA(data_path, batch_size=32):
+    train_set, valid_set, test_set, = pickle.load(open(data_path), 'rb')
+    train_data = BatteryDataPreprocessor(data_path, train_set, dataset_type='NASA')
+    valid_data = BatteryDataPreprocessor(data_path, valid_set, dataset_type='NASA')
+    test_data = BatteryDataPreprocessor(data_path, test_set, dataset_type='NASA')
+    
+    train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=1)
+    valid_loader = DataLoader(valid_data, batch_size=batch_size, shuffle=1)
+    test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=1)
+
+    return train_loader, valid_loader, test_loader
