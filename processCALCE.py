@@ -13,7 +13,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader, Dataset, TensorDataset, random_split
 
 from math import sqrt
 from datetime import datetime
@@ -46,6 +46,8 @@ class BatteryDataPreprocessor:
                 self.process_battery_data(df,discharge_capacities, health_indicator, internal_resistance, CCCT, CVCT)
             
             self.battery_data[name] = self.aggregate_data(discharge_capacities, health_indicator, internal_resistance, CCCT, CVCT)
+            target_var = discharge_capacities
+            return target_var
 
         print("Datasets loaded successfully.")
 
@@ -192,15 +194,25 @@ def setup_seed(seed):
 
 
 
+def get_dataloader(battery_data, batch_size=32):
+    # Assume battery_data is a dictionary with keys as battery names and values as dataframes or similar structures.
+    # Each entry contains processed data for each battery, specifically for the NASA dataset.
 
-def get_dataloader_CALCE(data_path, batch_size=32):
-    train_set, valid_set, test_set, = pickle.load(open(data_path), 'rb')
-    train_data = BatteryDataPreprocessor(data_path, train_set)
-    valid_data = BatteryDataPreprocessor(data_path, valid_set)
-    test_data = BatteryDataPreprocessor(data_path, test_set)
+    # Concatenating data from all batteries
+    all_data = pd.concat(battery_data.values(), ignore_index=True)
     
-    train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=1)
-    valid_loader = DataLoader(valid_data, batch_size=batch_size, shuffle=1)
-    test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=1)
+    # Example columns might include different metrics like 'cycle', 'discharge_capacity', 'charge_time', etc.
+    # Define the features and the target variable according to the analysis goal
+    X = all_data[['cycle', 'discharge_capacity', 'charge_time']].values  # Example feature columns
+    y = all_data['RUL'].values  # Remaining Useful Life or another health indicator as the target
 
-    return train_loader, valid_loader, test_loader
+    # Convert data to tensors
+    X_tensor = torch.tensor(X, dtype=torch.float32)
+    y_tensor = torch.tensor(y, dtype=torch.float32)
+
+    # Create a TensorDataset
+    dataset = TensorDataset(X_tensor, y_tensor)
+
+    # Split the dataset into training, validation, and testing
+    train_size = int(0.7 * len(dataset))
+    valid_size = int(0.15 * len(dataset))

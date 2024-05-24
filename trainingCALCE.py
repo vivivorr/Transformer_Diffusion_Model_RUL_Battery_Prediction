@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+from processCALCE import BatteryDataPreprocessor
 from torch.optim import Adam
 from tqdm import tqdm
 import pickle
@@ -14,14 +15,17 @@ def train(
 ):
     optimizer = Adam(model.parameters(), lr=config['train']['lr'], weight_decay=5e-8)
     if foldername != '':
-        output_path = foldername + '/model.pth' #ändern?
+        output_path = foldername + '/model.pth'
     m = []
     for i in range(int(config['train']['epochs'] / 10)):
         m.append(i * 10)
         
     lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=m[1:], gamma=0.8)
     ct = 0
-    _, target_var = pickle.load(open('preprocess/data/var.pkl', 'rb')) #ändern
+    dir_path = 'datasets/CALCE/'
+    battery_list = ['CS2_35', 'CS2_36', 'CS2_37', 'CS2_38']
+    battery = BatteryDataPreprocessor(dir_path, battery_list)
+    target_var = battery.load_calce_datasets()
     size_y = 10 * len(target_var)
     best_valid_loss = np.inf
     for epoch_no in range(config['train']['epochs']):

@@ -340,13 +340,24 @@ def setup_seed(seed):
         torch.backends.cudnn.deterministic = True
 
 
-
+# def get_dataloader(data_path, var_path, size, batch_size=32):
+#     train_set, train_info, valid_set, valid_info, test_set, test_info = pickle.load(open(data_path, 'rb'))
+#     var, target_var = pickle.load(open(var_path, 'rb'))
+#     train_data = MIMIC_Dataset(train_set, train_info, size, target_var)
+#     valid_data = MIMIC_Dataset(valid_set, valid_info, size, target_var)
+#     test_data = MIMIC_Dataset(test_set, test_info, size, target_var)
+    
+#     train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=1)
+#     valid_loader = DataLoader(valid_data, batch_size=batch_size, shuffle=1)
+#     test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=1)
+    
+#     return train_loader, valid_loader, test_loader
 
 def get_dataloader_CALCE(data_path, batch_size=32):
     train_set, valid_set, test_set, = pickle.load(open(data_path), 'rb')
-    train_data = BatteryDataPreprocessor(data_path, train_set, dataset_type='CALCE')
-    valid_data = BatteryDataPreprocessor(data_path, valid_set, dataset_type='CALCE')
-    test_data = BatteryDataPreprocessor(data_path, test_set, dataset_type='CALCE')
+    train_data = BatteryDataPreprocessor(data_path, train_set)
+    valid_data = BatteryDataPreprocessor(data_path, valid_set)
+    test_data = BatteryDataPreprocessor(data_path, test_set)
     
     train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=1)
     valid_loader = DataLoader(valid_data, batch_size=batch_size, shuffle=1)

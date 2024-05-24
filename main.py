@@ -6,7 +6,7 @@ import yaml
 import os
 from diffusion import diffusion
 from process import get_dataloader
-from training import train, evaluate
+from trainingCALCE import train, evaluate
 
 parser = argparse.ArgumentParser(description='')
 parser.add_argument('--device', default='cuda:0')
@@ -20,8 +20,10 @@ current_time = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
 foldername = './save/attention_' + current_time + '/'
 print('model folder:', foldername)
 os.makedirs(foldername, exist_ok=True)
-data_path = 'preprocess/data/dataset.pkl'   #ändern
-var_path = 'preprocess/data/var.pkl'        #ändern
+dir_path = 'datasets/CALCE/'
+battery_list = ['CS2_35', 'CS2_36', 'CS2_37', 'CS2_38']
+#data_path = 'preprocess/data/dataset.pkl'   #ändern
+#var_path = 'preprocess/data/var.pkl'        #ändern
 size = config['diffusion']['size']
 train_loader, valid_loader, test_loader = get_dataloader(data_path, var_path, size)
 model = diffusion(config, args.device).to(args.device)
