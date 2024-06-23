@@ -7,10 +7,11 @@ train:
   lr: 1.0e-3 
 
 diffusion:
-  size: 60 
+  size: 50 
   layers: 3 
   channels: 128 
-  nheads: 8 
+  num_heads: 8
+  ff_dim: 512 
   time_points: 40 
   diffusion_embedding_dim: 128
   time_embedding_dim: 128
