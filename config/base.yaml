@@ -2,12 +2,12 @@
 #type: args
 
 train:
-  epochs: 200
+  epochs: 50
   batch_size: 32 
   lr: 1.0e-3 
 
 diffusion:
-  size: 50 
+  size: 32 
   layers: 3 
   channels: 128 
   num_heads: 8
